@@ -13,7 +13,7 @@ from .. import util, formatter
 import json
 import sys
 import os
-
+import xml.etree.cElementTree as ET
 
 class MetadataPP(PostProcessor):
 
@@ -45,6 +45,9 @@ class MetadataPP(PostProcessor):
                 cfmt = "\n".join(cfmt) + "\n"
             self._content_fmt = formatter.parse(cfmt).format_map
             ext = "txt"
+        elif mode == "comicinfoxml":
+            self.write = self._write_comic_info_xml
+            ext = "xml"
         elif mode == "jsonl":
             self.write = self._write_json
             self._json_encode = self._make_encoder(options).encode
@@ -245,6 +248,11 @@ class MetadataPP(PostProcessor):
             kwdict = self.filter(kwdict)
         fp.write(self._json_encode(kwdict) + "\n")
 
+    def _write_comic_info_xml(self, fp, kwdict):
+        if self.filter:
+            kwdict = self.filter(kwdict)
+        fp.write(self._comic_info_encode(kwdict) + "\n")
+
     def _make_filter(self, options):
         include = options.get("include")
         if include:
@@ -277,6 +285,40 @@ class MetadataPP(PostProcessor):
             check_circular=False,
             default=util.json_default,
         )
+
+    def _comic_info_encode(self, kwdict):
+        root = ET.Element("ComicInfo")
+        root.set("xmlns:xsd", "http://www.w3.org/2001/XMLSchema")
+        root.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+
+        key_map = {
+            "title": "Title",
+            "manga": "Series",
+            "chapter": "Number",
+            "date": "date",
+            "author": "Writer",
+            "group": "Translator",
+            "tags": "Tags",
+            "count": "PageCount",
+            "lang": "LanguageISO",
+            "mangatype": "Manga",
+        }
+
+        for key, value in key_map.items():
+            if key == "mangatype":
+                ET.SubElement(root, "Manga").text = "YesAndRightToLeft"
+            elif key in kwdict:
+                if key == "date":
+                    ET.SubElement(root, "Year").text = str(kwdict["date"].year)
+                    ET.SubElement(root, "Month").text = str(kwdict["date"].month)
+                    ET.SubElement(root, "Day").text = str(kwdict["date"].day)
+                elif key == "tags":
+                    ET.SubElement(root, value).text = ",".join(kwdict[key])
+                else:
+                    ET.SubElement(root, value).text = str(kwdict[key])
+
+        return ET.tostring(root).decode("utf-8")
+
 
 
 def _traverse(obj, key):

@@ -685,6 +685,12 @@ def build_parser():
         "event"   : "init",
         "filename": "info.json",
     }
+    comicinfoxml = {
+        "name": "metadata",
+        "event": "init",
+        "filename": "ComicInfo.xml",
+        "mode": "comicinfoxml"
+    }
     postprocessor = parser.add_argument_group("Post-processing Options")
     postprocessor.add_argument(
         "-P", "--postprocessor",
@@ -719,6 +725,11 @@ def build_parser():
         dest="postprocessors",
         action="append_const", const=infojson,
         help=argparse.SUPPRESS,
+    )
+    postprocessor.add_argument(
+        "--write-comicinfo-xml",
+        dest="postprocessors",
+        action="append_const", const=comicinfoxml,
     )
     postprocessor.add_argument(
         "--write-tags",
